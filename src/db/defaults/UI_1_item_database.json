@@ -1,0 +1,46 @@
+[
+    {
+        "hierarchy_type": "category",
+        "display_name": "CONDUIT",
+        "children": [
+            {"hierarchy_type": "category", "display_name": "EMT",
+                "children": [
+                    {"hierarchy_type": "item", "item_idx": "0", "item_uid": "emt_1/2"},
+                    {"hierarchy_type": "item", "item_idx": "1", "item_uid": "emt_3/4"},
+                    {"hierarchy_type": "item", "item_idx": "2", "item_uid": "emt_1"},
+                    {"hierarchy_type": "item", "item_idx": "3", "item_uid": "emt_1-1/4"},
+                    {"hierarchy_type": "item", "item_idx": "4", "item_uid": "emt_1-1/2"},
+                    {"hierarchy_type": "item", "item_idx": "5", "item_uid": "emt_2"},
+                    {"hierarchy_type": "item", "item_idx": "6", "item_uid": "emt_2-1/2"},
+                    {"hierarchy_type": "item", "item_idx": "7", "item_uid": "emt_3"},
+                    {"hierarchy_type": "item", "item_idx": "8", "item_uid": "emt_3-1/2"},
+                    {"hierarchy_type": "item", "item_idx": "9", "item_uid": "emt_4"}
+                ]},
+            {"hierarchy_type": "spacer"},
+            {"hierarchy_type": "category", "display_name": "RIGID", "children": []}
+        ]
+    },
+    {   
+        "hierarchy_type": "category", 
+        "display_name": "FITTINGS", 
+        "children": [
+            {"hierarchy_type": "category", "display_name": "EMT", "children": [
+                {"hierarchy_type": "item", "item_idx": "10", "item_uid": "emt_comp-conn_1/2"},
+                {"hierarchy_type": "item", "item_idx": "11", "item_uid": "emt_comp-conn_3/4"},
+                {"hierarchy_type": "item", "item_idx": "12", "item_uid": "emt_comp-conn_1"}
+            ]}
+        ]
+    },
+    {"hierarchy_type": "spacer"},
+    {
+        "hierarchy_type": "category",
+        "display_name": "WIRE",
+        "children": [
+            {"hierarchy_type": "category", "display_name": "THHN",
+                "children": [
+                    {"hierarchy_type": "item", "item_idx": "13", "item_uid": "wire_thhn_14"},
+                    {"hierarchy_type": "item", "item_idx": "14", "item_uid": "wire_thhn_12"}
+                ]}
+        ]
+    }
+]

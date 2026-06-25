@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jets"
+version = "0.0.1"
+description = "Joe's Electrical Takeoff Software"
+readme = "README.md"
+authors = [
+    { name = "Joe Mulhern" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "PyQt6",
+    "PyMuPDF",
+    "openpyxl",
+    
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+]
+
+# [project.scripts]
+# cfb = "c.cli.entrypoint:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
