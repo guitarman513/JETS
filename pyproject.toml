@@ -15,6 +15,7 @@ dependencies = [
     "PyQt6",
     "PyMuPDF",
     "openpyxl",
+    "pydantic",
     
 ]
 

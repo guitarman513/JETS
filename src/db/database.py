@@ -7,12 +7,13 @@ import os
 import json
 import shutil
 from pathlib import Path
+from typing import List
+
+from models.project import ProjectQuickInfo
+from models.a_defaults import DEFAULT_PROJECTS_PATH, DEFAULT_DB_PATH
 
 
-DEFAULT_DB_PATH = Path.home() / ".jets" / "_default_database" 
-DEFAULT_PROJECTS_PATH = Path.home() / ".jets" / "_default_projects" 
-
-
+# Paste all the default db stuff in some other directory in case they get edited
 def initialize_default_db():
     """Copy default database files (JSON and CSV) to the user's default database path."""
     # Create the default database directory if it doesn't exist
@@ -30,73 +31,22 @@ def initialize_default_db():
 
 # ── Project helpers ──────────────────────────────────────────────────────────
 
-def get_all_projects(folder_path: str=DEFAULT_PROJECTS_PATH):
+def get_all_projects(folder_path: str=DEFAULT_PROJECTS_PATH) -> List[ProjectQuickInfo]:
     """Get all projects by finding subdirectories in the default projects path. Projects all have an id.txt file with their project ID."""
     folder_path = Path(folder_path)
-    folder_path.mkdir(parents=True, exist_ok=True)
+    # folder_path.mkdir(parents=True, exist_ok=True)
     
-    project_ids = []
+    all_projects_info:List[ProjectQuickInfo] = []
     for project_dir in sorted(folder_path.iterdir()):
         if project_dir.is_dir():
-            id_file = project_dir / "id.txt"
-            if id_file.exists():
+            info_file = project_dir / "project_quick_info.json"
+            if info_file.exists():
                 try:
-                    project_id = id_file.read_text().strip()
-                    project_ids.append(project_id)
+                    all_projects_info.append(
+                        ProjectQuickInfo(**json.load(info_file))
+                    )
                 except Exception:
                     pass  # Skip if unable to read the file
     
-    return project_ids
+    return all_projects_info
 
-
-
-
-def create_project(name: str, folder_path: str=DEFAULT_PROJECTS_PATH) -> str:
-    """Create a new project directory with an id.txt file and return its ID."""
-    folder_path = Path(folder_path)
-    project_path = folder_path / name
-    project_path.mkdir(parents=True, exist_ok=True)
-    
-    # Generate a project ID (using folder name with timestamp)
-    from datetime import datetime
-    project_id = f"{name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    
-    # Write project ID to id.txt
-    id_file = project_path / "id.txt"
-    id_file.write_text(project_id)
-    
-    return project_id
-
-
-
-def get_project(project_id: str, folder_path: str=DEFAULT_PROJECTS_PATH) -> Path:
-    """Find and return the path to a project by its ID."""
-    folder_path = Path(folder_path)
-    folder_path.mkdir(parents=True, exist_ok=True)
-    
-    for project_dir in folder_path.iterdir():
-        if project_dir.is_dir():
-            id_file = project_dir / "id.txt"
-            if id_file.exists():
-                try:
-                    stored_id = id_file.read_text().strip()
-                    if stored_id == project_id:
-                        return project_dir
-                except Exception:
-                    pass
-    
-    return None  # Project not found
-
-def get_drawings_for_project(project_id: str, folder_path: str=DEFAULT_PROJECTS_PATH):
-    """Get all drawings for a project by its ID."""
-    project_dir = get_project(project_id, folder_path)
-    if not project_dir:
-        return []
-
-    drawings = []
-    for drawing_file in project_dir.glob("*.pdf"):
-        drawings.append({
-            "filename": drawing_file.name,
-            "display_name": drawing_file.stem
-        })
-    return drawings

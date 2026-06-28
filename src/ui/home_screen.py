@@ -1,5 +1,5 @@
 """
-home_screen.py — Landing screen for the estimator.
+home_screen.py — Landing screen for JETS.
 Shows existing projects from the DB and lets you create or open one.
 """
 
@@ -25,6 +25,9 @@ class HomeScreen(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        # Declare HomeScreen attributes in __init__
+        self.project_list = QListWidget() # Loads from default project folder, or from a user-specified folder. Need to override the user's default project folder if they change it.
+
         self._build_ui()
         self._load_projects()
 
@@ -54,7 +57,7 @@ class HomeScreen(QWidget):
         lbl_title.setObjectName("title")
         lbl_title.setStyleSheet("font-size: 28px; font-weight: 800; color: #FFFFFF; letter-spacing: -1px;")
 
-        lbl_sub = QLabel("ELECTRICAL ESTIMATOR")
+        lbl_sub = QLabel("Joe's Electrical Takeoff Software")
         lbl_sub.setObjectName("subtitle")
 
         brand_layout.addWidget(lbl_title)
@@ -112,18 +115,17 @@ class HomeScreen(QWidget):
         btn_new.setFixedHeight(34)
         btn_new.clicked.connect(self._create_project)
 
-        btn_open_folder = QPushButton("Open Folder…")
-        btn_open_folder.setFixedHeight(34)
-        btn_open_folder.clicked.connect(self._open_existing_folder)
+        btn_change_folder = QPushButton("Change Project Folder...")
+        btn_change_folder.setFixedHeight(34)
+        btn_change_folder.clicked.connect(self._change_project_folder)
 
-        header.addWidget(btn_open_folder)
+        header.addWidget(btn_change_folder)
         header.addSpacing(8)
         header.addWidget(btn_new)
         main_layout.addLayout(header)
         main_layout.addSpacing(16)
 
         # Project list
-        self.project_list = QListWidget()
         self.project_list.setAlternatingRowColors(True)
         self.project_list.itemDoubleClicked.connect(self._open_project)
         self.project_list.setStyleSheet("""
@@ -207,7 +209,7 @@ class HomeScreen(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
 
-    def _open_existing_folder(self):
+    def _change_project_folder(self):
         """Register a folder as a project by browsing to it."""
         folder = QFileDialog.getExistingDirectory(
             self, "Select existing project folder", str(Path.home())

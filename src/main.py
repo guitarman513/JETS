@@ -1,42 +1,31 @@
 """
-main.py — Entry point for JETS Electrical Takeoff Software.
+main.py — Entry point for Joe's Electrical Takeoff Software.
 
-Run with:
-    python main.py
-
-Requires:
-    PyQt6, PyMuPDF (fitz), openpyxl
-    pip install PyQt6 PyMuPDF openpyxl
 """
 
 import sys
-import os
-
-# Ensure the project root is on sys.path so all submodules resolve correctly
-sys.path.insert(0, os.path.dirname(__file__))
 
 from PyQt6.QtWidgets import QApplication, QStackedWidget, QMainWindow
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIcon
 
-from ui.theme import APP_STYLESHEET
 from ui.home_screen import HomeScreen
 from ui.viewer_window import ViewerWindow
 
 
 class AppShell(QMainWindow):
     """
-    Thin shell that manages navigation between HomeScreen and ViewerWindow.
+    Thin shell that manages navigation between HomeScreen and ProjectWindow.
     Uses a QStackedWidget so both live in memory once created.
     """
 
     def __init__(self):
         super().__init__()
         self.setWindowTitle("JETS — Joe's Electrical Takeoff Software")
-        self.resize(1200, 800)
+        # self.resize(1200, 800)
         self.setMinimumSize(900, 600)
 
-        # Stack: index 0 = home, index 1 = viewer
+        # Stack: index 0 = home, index 1 = project viewer
         self.stack = QStackedWidget()
         self.setCentralWidget(self.stack)
 
@@ -64,7 +53,7 @@ class AppShell(QMainWindow):
         self.stack.setCurrentWidget(self._viewer)
 
         # Update window title
-        from db.database import get_project
+        from db.database import get_project #TODO: figure out this. prob read the list of get_all_projects in the database file.
         p = get_project(project_id)
         if p:
             self.setWindowTitle(f"JETS — {p['name']}")
