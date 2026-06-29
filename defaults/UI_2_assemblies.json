@@ -1,0 +1,24 @@
+[
+    {
+        "hierarchy_type": "category",
+        "display_name": "EMT ON CONCRETE",
+        "children": [
+            { "hierarchy_type": "assembly", "assembly_idx": 9, "assembly_name_uid": "emt_3/4_with_couplings", "display_name": "EMT 3/4 With Couplings"}
+        ]
+    },
+    {
+        "hierarchy_type": "spacer"
+    },
+    {
+        "hierarchy_type": "category",
+        "display_name": "FIRE ALARM",
+        "children": [
+            {
+                "hierarchy_type": "assembly",
+                "assembly_idx": 20,
+                "assembly_name_uid": "fa_speaker_strobe_homerun",
+                "display_name": "FA Speaker Strobe Homerun"
+            }
+        ]
+    }
+]
