@@ -1,1 +1,3 @@
-DEFAULT_PROJECT_FOLDER=$HOME/.jets/projects
+DEFAULT_DB_PATH = '/Users/jmulhern/git/JETS/databases/joedb-2026-06'
+DEFAULT_PROJECTS_PATH = '/Users/jmulhern/git/JETS/project_folder'
+

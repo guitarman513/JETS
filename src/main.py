@@ -12,6 +12,8 @@ from PyQt6.QtGui import QIcon
 from ui.home_screen import HomeScreen
 from ui.viewer_window import ViewerWindow
 
+from models.jets import load_jets_config_db_dir_and_project_dir
+
 
 class AppShell(QMainWindow):
     """
@@ -21,6 +23,11 @@ class AppShell(QMainWindow):
 
     def __init__(self):
         super().__init__()
+
+        # Read the .jets/.jetsconfig file for defaults like defaultdbdir and default projectdir
+        db_dir, project_dir = load_jets_config_db_dir_and_project_dir()
+
+
         self.setWindowTitle("JETS — Joe's Electrical Takeoff Software")
         # self.resize(1200, 800)
         self.setMinimumSize(900, 600)

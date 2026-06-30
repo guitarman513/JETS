@@ -2,25 +2,97 @@ from typing import List, Dict, Any
 from time import time
 from pathlib import Path
 import json
+from uuid import UUID, uuid4
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from models.annotation import AnnotationStyle, AnnotationShape, AnnotationLineStyle
-from models.a_defaults import DEFAULT_PROJECTS_PATH
+from models.annotation import AnnotationStyle, AnnotationShape, AnnotationLineStyle, Annotation, default_annotation_styles
+from models.a_defaults import DEFAULT_PROJECTS_PATH, DEFAULT_ANNOTATION_STYLES
 
-class ProjectQuickInfo(BaseModel):
+# Reading and writing models to json files:
+# project = Project.model_validate_json(
+#     Path("project.json").read_text()
+# )
+
+# Path("project.json").write_text(
+#     project.model_dump_json(indent=4)
+# )
+
+
+
+class Drawing(BaseModel):
+    drawing_id: UUID = Field(default_factory=uuid4)
+    drawing_name: str
+    pdf_filename: str
+    annotations: list[Annotation] = Field(default_factory=list)
+    class Config:
+        use_enum_values = True
+    
+def get_all_drawings_in_project(project: Project) -> list[Drawing]:
+    drawing_directory = project.directory_path / "drawings"
+    drawings: list[Drawing] = []
+
+    if not drawing_directory.exists():
+        return drawings
+
+    for drawing_folder in drawing_directory.iterdir():
+        if not drawing_folder.is_dir():
+            continue
+        try:
+            UUID(drawing_folder.name)
+        except ValueError:
+            continue
+
+        drawing_info_path = drawing_folder / "drawing.json"
+        if drawing_info_path.exists():
+            drawings.append(
+                Drawing.model_validate_json(drawing_info_path.read_text(encoding="utf-8"))
+            )
+
+    return drawings
+
+
+class Project(BaseModel):
     project_name: str
     created: int
     last_updated: int
-    drawing_order: List[str]
+    drawing_order: list[UUID]
     directory_path: Path
-
     class Config:
         json_encoders = {Path: str}
 
+    def setup_project_as_new(self):
+        # Create project dir
+        self.project.directory_path.mkdir(parents=True, exist_ok=True)
+
+        # Save a project.json file
+        Path(self.project.directory_path / "project.json").write_text(
+            self.project.model_dump_json(indent=4)
+        )
+
+        # Create the drawings directory
+        if not Path(self.project.directory_path / "drawings").exists():
+            Path(self.project.directory_path / "drawings").mkdir()
+
+        # Create the annotation_styles.json file
+        # TODO: really should load this from the default_annotation_styles.json file that users may edit found in the .jets user data directory..
+        Path(self.project.directory_path / "annotation_styles.json").write_text(
+            json.dumps([style.model_dump() for style in default_annotation_styles], indent=2)
+        )
+
+# Maybe should implement methods in `Project` to do things like get drawings etc. But maybe not. Prob utility in having a container to hold things like drawing thumbnails and stuff
+# I suppose this should be able to hold larger things like the pdf drawings. Maybe should fully load only the active one at a time, and 
+# Always make sure to save each annotation to the folder every time it is updated
+class ProjectManager:
+    def __init__(self, project: Project):
+        self.project = project
+        # self.drawings_dict: dict[UUID, Drawing] = {load from project folder}
+        # self.styles: List[AnnotationStyle] = {load from project folder}
+        
+
+    
 
 
-#TODO: look at chatGPT chat with changes for this.
 
 
 
@@ -32,19 +104,10 @@ def create_default_project(project_name:str = "default_project"):
     - Project directory in defaults/default_project
     - Default AnnotationStyle objects in annotation_styles.json file
     - Blank Audit Trail
-    - Blank ProjectQuickInfo in project_quick_info.json file
+    - Blank Project in project.json file
     - Blank user_dwgs directory
     '''
-    annotation_style_fire_alarm = AnnotationStyle(
-        name="FIRE ALARM", count_color_outer="FF0000", count_color_inner="FF1111", count_size=5, count_shape=AnnotationShape.CIRCLE, count_opacity=0.8,
-        length_color="FA0000", length_width=4, length_vertex_size=5, length_vertex_shape=AnnotationShape.CIRCLE, length_opacity=0.9, length_line_style=AnnotationLineStyle.SOLID,
-        highlight_color="EEEEEF", highlight_width=10, highlight_opacity=0.4
-    )
-    annotation_style_branch_circuits = AnnotationStyle(
-        name="BRANCH CIRCUITS", count_color_outer="FF0000", count_color_inner="FF1111", count_size=5, count_shape=AnnotationShape.CIRCLE, count_opacity=0.8,
-        length_color="FA0000", length_width=4, length_vertex_size=5, length_vertex_shape=AnnotationShape.CIRCLE, length_opacity=0.9, length_line_style=AnnotationLineStyle.SOLID,
-        highlight_color="EEEEEF", highlight_width=10, highlight_opacity=0.4
-    )
+    
 
     # create default project directory
     project_dir = Path(DEFAULT_PROJECTS_PATH) / project_name
@@ -75,7 +138,7 @@ def create_default_project(project_name:str = "default_project"):
 
     # create project info and write to json
     now = int(time())
-    proj_info = ProjectQuickInfo(
+    proj_info = Project(
         project_name=project_name,
         created=now,
         last_updated=now,
@@ -86,11 +149,3 @@ def create_default_project(project_name:str = "default_project"):
     with info_path.open("w", encoding="utf-8") as f:
         json.dump(proj_info.to_dict(), f, indent=2)
 
-
-# The below 
-
-class Project:
-    def __init__(self, project_quick_info: ProjectQuickInfo):
-        self.project_quick_info = project_quick_info
-
-all_projects_info:List[ProjectQuickInfo] = []

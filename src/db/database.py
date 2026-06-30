@@ -9,7 +9,7 @@ import shutil
 from pathlib import Path
 from typing import List
 
-from models.project import ProjectQuickInfo
+from models.project import Project
 from models.a_defaults import DEFAULT_PROJECTS_PATH, DEFAULT_DB_PATH
 
 
@@ -31,19 +31,20 @@ def initialize_default_db():
 
 # ── Project helpers ──────────────────────────────────────────────────────────
 
-def get_all_projects(folder_path: str=DEFAULT_PROJECTS_PATH) -> List[ProjectQuickInfo]:
+def get_all_projects(folder_path: str=DEFAULT_PROJECTS_PATH) -> List[Project]:
     """Get all projects by finding subdirectories in the default projects path. Projects all have an id.txt file with their project ID."""
     folder_path = Path(folder_path)
     # folder_path.mkdir(parents=True, exist_ok=True)
     
-    all_projects_info:List[ProjectQuickInfo] = []
+    all_projects_info:List[Project] = []
     for project_dir in sorted(folder_path.iterdir()):
         if project_dir.is_dir():
             info_file = project_dir / "project_quick_info.json"
             if info_file.exists():
                 try:
                     all_projects_info.append(
-                        ProjectQuickInfo(**json.load(info_file))
+                        Project(**json.load(info_file))
+                        model_validate_json...
                     )
                 except Exception:
                     pass  # Skip if unable to read the file
