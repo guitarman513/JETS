@@ -1,0 +1,5 @@
+assembly_idx, assembly_name_uid, display_name
+9, "emt_3/4_with_couplings", "EMT 3/4"" WITH COUPLINGS"
+18, "wire_for_20a_breaker", "WIRE FOR 20A BREAKER"
+19, "emt_3/4_homerun", "EMT 3/4"" HOMERUN"
+20, "fa_speaker_strobe_homerun", "FA SPEAKER STROBE HOMERUN"

@@ -1,15 +1,19 @@
 from uuid import UUID, uuid4
-from enum import Enum
+from enum import StrEnum
 from typing import List, Tuple, Dict
-
+from pathlib import Path
 from pydantic import BaseModel, Field
 
 
 # #TODO: I don't think I want to support text yet
 # class AnnotationText(BaseModel):
 #     xy_points: List[Dict]
+class XYPoint(BaseModel):
+    xy_coordinate: Tuple[float, float]
+    is_vertex_counted_as_cnt: bool
+
 class AnnotationHighlighter(BaseModel):
-    xy_points: List[Dict] # TODO: handle smooth lines later?
+    xy_points: List[XYPoint] # TODO: handle smooth lines later?
 
 class AnnotationLength(BaseModel):
     class LengthCoordinate(BaseModel):
@@ -18,7 +22,7 @@ class AnnotationLength(BaseModel):
     xy_points: List[LengthCoordinate] # "xy_points": [{"coords": [0,0], "is_vertex_counted_as_cnt":true},]
 
 class AnnotationCount(BaseModel):
-    xy_points: List[Tuple[float, float]] # "xy_points": [ [0,0], [1,1], [2,2], ]
+    xy_points: List[XYPoint] # "xy_points": [ [0,0], [1,1], [2,2], ]
 
 # class AnnotationType(Enum):
 #     # TEXT = "TEXT"
@@ -26,13 +30,13 @@ class AnnotationCount(BaseModel):
 #     LENGTH = "AnnotationLength" # really this is a poly line
 #     COUNT = "AnnotationCount" # can be multiple clicks 
 
-class AnnotationShape(Enum):
+class AnnotationShape(StrEnum):
     CIRCLE = "CIRCLE" #TODO: maybe only implement circle for now
     TRIANGLE = "TRIANGLE"
     SQUARE = "SQUARE"
     X = "X"
 
-class AnnotationLineStyle(Enum):
+class AnnotationLineStyle(StrEnum):
     SOLID = "SOLID"
     DASHED = "DASHED"
 
@@ -66,6 +70,11 @@ class Annotation(BaseModel):
     class Config:
         use_enum_values = True
 
+class Annotations(BaseModel):
+    annotations: List[Annotation] = Field(default_factory=list) # type: ignore
+    def save_to_file(self, file_path: Path):
+        file_path.write_text(self.model_dump_json(indent=4))
+
 annotation_style_fire_alarm = AnnotationStyle(
     name="FIRE ALARM", count_color_outer="FF0000", count_color_inner="FF1111", count_size=5, count_shape=AnnotationShape.CIRCLE, count_opacity=0.8,
     length_color="FA0000", length_width=4, length_vertex_size=5, length_vertex_shape=AnnotationShape.CIRCLE, length_opacity=0.9, length_line_style=AnnotationLineStyle.SOLID,
@@ -77,9 +86,14 @@ annotation_style_branch_circuits = AnnotationStyle(
     highlight_color="EEEEEF", highlight_width=10, highlight_opacity=0.4
 )
 
+class AnnotationStyles(BaseModel):
+    styles: List[AnnotationStyle] = Field(default_factory=list) # type: ignore
+
 #TODO: save this to the defaults folder, and then copy it to the .jets user data directory in an 
 # default_annotation_styles.json file that users may edit.
-default_annotation_styles = [
-    annotation_style_fire_alarm, 
-    annotation_style_branch_circuits
-]
+default_annotation_styles = AnnotationStyles(
+    styles=[
+        annotation_style_fire_alarm,
+        annotation_style_branch_circuits
+    ]
+)

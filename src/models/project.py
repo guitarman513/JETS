@@ -6,8 +6,8 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 
-from models.annotation import AnnotationStyle, AnnotationShape, AnnotationLineStyle, Annotation, default_annotation_styles
-from models.a_defaults import DEFAULT_PROJECTS_PATH, DEFAULT_ANNOTATION_STYLES
+from models.annotation import Annotations, Annotation, default_annotation_styles
+from models.jets import DEFAULT_PROJECT_BROWSER_DIR, DEFAULT_ANNOTATION_STYLES
 
 # Reading and writing models to json files:
 # project = Project.model_validate_json(
@@ -22,19 +22,40 @@ from models.a_defaults import DEFAULT_PROJECTS_PATH, DEFAULT_ANNOTATION_STYLES
 
 class Drawing(BaseModel):
     drawing_id: UUID = Field(default_factory=uuid4)
-    drawing_name: str
-    pdf_filename: str
-    annotations: list[Annotation] = Field(default_factory=list)
+    drawing_folder_path: Path   # i.e. the path of the folder whose name is the uuid of the drawing.
+    annotations_file_path: Path # save actual annotations as a `Annotations` object and call `save_to_file()` on it as needed.
+    drawing_name: str           # some uuid
+    pdf_filename: str           # user-friendly filename e.g. "E-101.pdf"
+    # thumbnail_path: Path      # TODO: implement thumbail generation and saving. Maybe just save as a png in the drawing folder for now. Maybe should be a 200x200 square thumbnail, and if the pdf is not square, then just center it and fill the rest with white.
     class Config:
         use_enum_values = True
     
+    def save_to_file(self):
+        drawing_info_path = self.drawing_folder_path / "drawing.json"
+        drawing_info_path.write_text(self.model_dump_json(indent=4))
+
+    def update(self, **kwargs): # type: ignore
+        for key, value in kwargs.items(): # type: ignore
+            if hasattr(self, key):
+                setattr(self, key, value)
+            else:
+                raise AttributeError(f"Drawing has no attribute '{key}'")
+        self.save_to_file()
+        # self.update_thumbnail()
+        # annotations are tightly coupled to the drawing, so if the drawing is updated, then the annotations should be updated too. 
+    
+    @classmethod
+    def load_from_file(cls, drawing_folder_path: Path):
+        drawing_info_path = drawing_folder_path / "drawing.json"
+        if not drawing_info_path.exists():
+            raise FileNotFoundError(f"Drawing info file not found at {drawing_info_path}.")
+        return cls.model_validate_json(drawing_info_path.read_text())
+
 def get_all_drawings_in_project(project: Project) -> list[Drawing]:
     drawing_directory = project.directory_path / "drawings"
     drawings: list[Drawing] = []
-
     if not drawing_directory.exists():
         return drawings
-
     for drawing_folder in drawing_directory.iterdir():
         if not drawing_folder.is_dir():
             continue
@@ -42,13 +63,9 @@ def get_all_drawings_in_project(project: Project) -> list[Drawing]:
             UUID(drawing_folder.name)
         except ValueError:
             continue
-
-        drawing_info_path = drawing_folder / "drawing.json"
-        if drawing_info_path.exists():
-            drawings.append(
-                Drawing.model_validate_json(drawing_info_path.read_text(encoding="utf-8"))
-            )
-
+        drawings.append(
+            Drawing.load_from_file(drawing_folder)
+        )
     return drawings
 
 
