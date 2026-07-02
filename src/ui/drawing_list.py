@@ -16,10 +16,14 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QAction
 
-from db.database import (
-    get_drawings_for_project, get_project
-)
+from models.project import ProjectManager
 
+
+def get_project():
+    pass
+
+def get_drawings_for_project():
+    pass
 
 class DrawingListPanel(QWidget):
     """
@@ -29,10 +33,9 @@ class DrawingListPanel(QWidget):
     drawing_selected = pyqtSignal(int)       # drawing_id
     scale_requested  = pyqtSignal(list)      # list of drawing_ids
 
-    def __init__(self, project_id: int, parent=None):
+    def __init__(self, project_manager: ProjectManager, parent=None):
         super().__init__(parent)
-        self.project_id = project_id
-        self.project = get_project(project_id)
+        self.project_manager:ProjectManager = project_manager
         self.setFixedWidth(260)
         self._build_ui()
         self._refresh()
@@ -55,8 +58,7 @@ class DrawingListPanel(QWidget):
         lbl_name.setStyleSheet("font-size: 14px; font-weight: 700; color: #FFFFFF;")
         lbl_name.setWordWrap(True)
 
-        folder_path = Path(self.project["folder_path"])
-        lbl_path = QLabel(str(folder_path))
+        lbl_path = QLabel(str(self.project_manager.project_info.full_project_path))
         lbl_path.setStyleSheet("font-size: 10px; color: #5A6070;")
         lbl_path.setWordWrap(True)
 

@@ -20,8 +20,8 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIcon
 
 from ui.theme import APP_STYLESHEET
-from ui.home_screen import HomeScreen
-from ui.viewer_window import ViewerWindow
+from ui.aa_project_browser import ProjectBrowser
+from ui.ba_proj_tabular import ProjWindowTabular
 
 
 class AppShell(QMainWindow):
@@ -41,7 +41,7 @@ class AppShell(QMainWindow):
         self.setCentralWidget(self.stack)
 
         # Home screen
-        self.home = HomeScreen()
+        self.home = ProjectBrowser()
         self.home.project_opened.connect(self._open_project)
         self.stack.addWidget(self.home)
 
@@ -58,7 +58,7 @@ class AppShell(QMainWindow):
             self._viewer.deleteLater()
             self._viewer = None
 
-        self._viewer = ViewerWindow(project_id)
+        self._viewer = ProjWindowTabular(project_id)
         self._viewer.home_requested.connect(self._go_home)
         self.stack.addWidget(self._viewer)
         self.stack.setCurrentWidget(self._viewer)

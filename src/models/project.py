@@ -1,168 +1,138 @@
-from typing import List, Dict, Any
+import shutil
+from typing import List, Dict, Any, Literal
 from time import time
 from pathlib import Path
 import json
 from uuid import UUID, uuid4
+import re
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
-from models.annotation import Annotations, Annotation, default_annotation_styles
-from models.jets import DEFAULT_PROJECT_BROWSER_DIR, DEFAULT_ANNOTATION_STYLES
+from models.annotation import Drawing, Annotation, DEFAULT_ANNOTATION_STYLES, AnnotationStyles
+from models.audit_trail import AuditTrail
+from models.jets import initialize_jets_ecosystem_if_dne, RecentPath
 
-# Reading and writing models to json files:
-# project = Project.model_validate_json(
-#     Path("project.json").read_text()
-# )
-
-# Path("project.json").write_text(
-#     project.model_dump_json(indent=4)
-# )
+from a_utils import clean_str_for_use_in_pathname, is_valid_path
+from a_constants import *
+from models.z_model_hierarchy import InstantlyUpdates
 
 
-
-class Drawing(BaseModel):
-    drawing_id: UUID = Field(default_factory=uuid4)
-    drawing_folder_path: Path   # i.e. the path of the folder whose name is the uuid of the drawing.
-    annotations_file_path: Path # save actual annotations as a `Annotations` object and call `save_to_file()` on it as needed.
-    drawing_name: str           # some uuid
-    pdf_filename: str           # user-friendly filename e.g. "E-101.pdf"
-    # thumbnail_path: Path      # TODO: implement thumbail generation and saving. Maybe just save as a png in the drawing folder for now. Maybe should be a 200x200 square thumbnail, and if the pdf is not square, then just center it and fill the rest with white.
-    class Config:
-        use_enum_values = True
-    
-    def save_to_file(self):
-        drawing_info_path = self.drawing_folder_path / "drawing.json"
-        drawing_info_path.write_text(self.model_dump_json(indent=4))
-
-    def update(self, **kwargs): # type: ignore
-        for key, value in kwargs.items(): # type: ignore
-            if hasattr(self, key):
-                setattr(self, key, value)
-            else:
-                raise AttributeError(f"Drawing has no attribute '{key}'")
-        self.save_to_file()
-        # self.update_thumbnail()
-        # annotations are tightly coupled to the drawing, so if the drawing is updated, then the annotations should be updated too. 
-    
-    @classmethod
-    def load_from_file(cls, drawing_folder_path: Path):
-        drawing_info_path = drawing_folder_path / "drawing.json"
-        if not drawing_info_path.exists():
-            raise FileNotFoundError(f"Drawing info file not found at {drawing_info_path}.")
-        return cls.model_validate_json(drawing_info_path.read_text())
-
-def get_all_drawings_in_project(project: Project) -> list[Drawing]:
-    drawing_directory = project.directory_path / "drawings"
-    drawings: list[Drawing] = []
-    if not drawing_directory.exists():
-        return drawings
-    for drawing_folder in drawing_directory.iterdir():
-        if not drawing_folder.is_dir():
-            continue
-        try:
-            UUID(drawing_folder.name)
-        except ValueError:
-            continue
-        drawings.append(
-            Drawing.load_from_file(drawing_folder)
-        )
-    return drawings
-
-
-class Project(BaseModel):
-    project_name: str
-    created: int
+class ProjectInfo(InstantlyUpdates):
+    """A small class for fast, top-level project information
+    # NOTE: Unless loading this for a quick look at project data, this should be created with the classmethod via ProjectManager which will instantiate other default dirs and configs a real project needs.
+    """
+    PARENT_PATH:Path = str("EDIT_ME_PLEASE")
+    OUTPUT_CONFIG_FILE_NAME:str = 'project.json'    # required for parent class! 
+    project_name: str        # This can hAVe WEIrd cAsE and Symb0l$ unlike full_project_path
+    created: int             # Unix timestamp
     last_updated: int
-    drawing_order: list[UUID]
-    directory_path: Path
-    class Config:
-        json_encoders = {Path: str}
+    drawing_order: list[UUID]# Even though this class shouldn't have deep knowledge of drawings, it may be nice to know if there are any drawings at all, which you can do by counting this list's elements
+    # NOTE: Always validate this elsewhere!
+    full_project_path: Path  # such as $HOME/.jets/projects/<THIS_PROJECT>
 
-    def setup_project_as_new(self):
-        # Create project dir
-        self.project.directory_path.mkdir(parents=True, exist_ok=True)
+def get_projects_infos(parent_path:Path) -> List[ProjectInfo]:
+    projs_infos:List[ProjectInfo] = []
+    for path_obj in parent_path.iterdir():
+        if path_obj.is_dir() and (path_obj / "project.json").exists():
+            # then we have a valid project dir boys!!
+            pi = ProjectInfo.load(path_obj / "project.json")
+            projs_infos.append(pi)
+    return sort_projects_infos(projs_infos)
 
-        # Save a project.json file
-        Path(self.project.directory_path / "project.json").write_text(
-            self.project.model_dump_json(indent=4)
-        )
+sort_options = Literal["name_asc", "name_desc", "created_asc", "created_desc", "last_updated_asc", "last_updated_desc"]
+def sort_projects_infos(projs_infos:List[ProjectInfo], by: sort_options = "created_asc") -> List[ProjectInfo]:
+    if by == "name_asc":
+        return sorted(projs_infos, key=lambda p: p.project_name.lower())
+    elif by == "name_desc":
+        return sorted(projs_infos, key=lambda p: p.project_name.lower(), reverse=True)
+    elif by == "created_asc":
+        return sorted(projs_infos, key=lambda p: p.created)
+    elif by == "created_desc":
+        return sorted(projs_infos, key=lambda p: p.created, reverse=True)
+    elif by == "last_updated_asc":
+        return sorted(projs_infos, key=lambda p: p.last_updated)
+    elif by == "last_updated_desc":
+        return sorted(projs_infos, key=lambda p: p.last_updated, reverse=True)
+    else:
+        raise ValueError(f"Invalid sort option: {by}")
 
-        # Create the drawings directory
-        if not Path(self.project.directory_path / "drawings").exists():
-            Path(self.project.directory_path / "drawings").mkdir()
 
-        # Create the annotation_styles.json file
-        # TODO: really should load this from the default_annotation_styles.json file that users may edit found in the .jets user data directory..
-        Path(self.project.directory_path / "annotation_styles.json").write_text(
-            json.dumps([style.model_dump() for style in default_annotation_styles], indent=2)
-        )
-
-# Maybe should implement methods in `Project` to do things like get drawings etc. But maybe not. Prob utility in having a container to hold things like drawing thumbnails and stuff
-# I suppose this should be able to hold larger things like the pdf drawings. Maybe should fully load only the active one at a time, and 
-# Always make sure to save each annotation to the folder every time it is updated
+# The big kahuna
 class ProjectManager:
-    def __init__(self, project: Project):
-        self.project = project
-        # self.drawings_dict: dict[UUID, Drawing] = {load from project folder}
-        # self.styles: List[AnnotationStyle] = {load from project folder}
+    def __init__(
+            self, 
+            project_info:ProjectInfo,
+            drawing_thumbnails_plain:list,
+            drawing_thumbnails_annotated:list,
+            active_drawing:Drawing | None,
+            annotation_styles:AnnotationStyles,
+            audit_trail:AuditTrail,
+        ):
+        self.project_info:ProjectInfo = project_info
+        self.drawing_thumbnails_plain:list = drawing_thumbnails_plain
+        self.drawing_thumbnails_annotated:list = drawing_thumbnails_annotated
+        self.active_drawing:Drawing | None = active_drawing
+        self.annotation_styles:AnnotationStyles = annotation_styles
+        self.audit_trail:AuditTrail = audit_trail
+
+    @classmethod
+    def create_new_project(
+            cls,
+            project_name:str,
+            parent_dir_to_store_this_project:Path,
+        ):
+        initialize_jets_ecosystem_if_dne() 
+        '''
+        projs/            <--- assumed to be valid now
+        - this_project/   <--- *** see if we can create this ***
+        '''
+        # Check if we can create this project's path
+        proj_name_clean = clean_str_for_use_in_pathname(project_name)
+        full_proj_path = parent_dir_to_store_this_project / proj_name_clean
+        if not is_valid_path(full_proj_path): raise ValueError(f"\nNot a valid path: {full_proj_path}\n")
+
+        # Create default boilerplate (see README.md for tree)
+        project_info = ProjectInfo(
+            OUTPUT_CONFIG_FILE_NAME='project.json',
+            PARENT_PATH=full_proj_path,
+            project_name=project_name,
+            created=time(),
+            last_updated=time(),
+            drawing_order=[],
+            full_project_path=full_proj_path
+        )
+        project_info.last_updated = time() # triggers a config file save since invoking __set_attr__ (see InstantlyUpdates class defn)
+        '''
+        projs/            
+        - this_project/     # :)
+            - project.json  # :)
+            - annotation_styles.json  # *** create this ***
+            - audit_trail.json  # *** create this ***
+            - drawings/         # *** create this (will be blank cause no dwgs yet) ***
+            - database/         # *** create this with default db data ***
+        '''
+        annotation_styles = AnnotationStyles(OUTPUT_CONFIG_FILE_NAME='annotation_styles.json', PARENT_PATH=full_proj_path)
+        annotation_styles.annotation_styles = DEFAULT_ANNOTATION_STYLES # should trigger config file save
+
+        audit_trail = AuditTrail(PARENT_PATH=full_proj_path, OUTPUT_CONFIG_FILE_NAME='audit_trail.json')
+        audit_trail.entries = [] # should trigger congif file 
+        
+        Path(full_proj_path / "drawings").mkdir(exist_ok=False, parents=False)
+
+        # now copy default db stuff into the new project's database dir (not the immutable one that's source controlled! This is from the .jets reference dir)
+        Path(full_proj_path / "database").mkdir(exist_ok=False, parents=False) # create this new project's one now
+        shutil.copytree(DEFAULT_REFERENCE_DB_DIR, full_proj_path / "database", dirs_exist_ok=True)
+
+        # any other setup
+        return ProjectManager(
+            project_info=project_info,
+            drawing_thumbnails_plain=[],
+            drawing_thumbnails_annotated=[],
+            active_drawing=None,
+            annotation_styles=annotation_styles,
+            audit_trail=audit_trail
+        )
         
 
-    
 
-
-
-
-
-
-#TODO: EDIT BELOW 
-def create_default_project(project_name:str = "default_project"):
-    '''
-    Create:
-    - Project directory in defaults/default_project
-    - Default AnnotationStyle objects in annotation_styles.json file
-    - Blank Audit Trail
-    - Blank Project in project.json file
-    - Blank user_dwgs directory
-    '''
-    
-
-    # create default project directory
-    project_dir = Path(DEFAULT_PROJECTS_PATH) / project_name
-    project_dir.mkdir(parents=True, exist_ok=True)
-
-    # prepare annotation styles list
-    annotation_styles = [annotation_style_fire_alarm, annotation_style_branch_circuits]
-
-    def _serialize(obj):
-        # dataclasses -> dict, Paths -> str, Enums -> name, others unchanged
-        if is_dataclass(obj):
-            result = asdict(obj)
-            for k, v in result.items():
-                if hasattr(v, "name"):
-                    result[k] = v.name
-                elif isinstance(v, Path):
-                    result[k] = str(v)
-            return result
-        if isinstance(obj, Path):
-            return str(obj)
-        if hasattr(obj, "name"):
-            return obj.name
-        return obj
-
-    styles_path = project_dir / "annotation_styles.json"
-    with styles_path.open("w", encoding="utf-8") as f:
-        json.dump([_serialize(s) for s in annotation_styles], f, indent=2)
-
-    # create project info and write to json
-    now = int(time())
-    proj_info = Project(
-        project_name=project_name,
-        created=now,
-        last_updated=now,
-        drawing_order=[s.name for s in annotation_styles],
-        directory_path=project_dir,
-    )
-    info_path = project_dir / "project_quick_info.json"
-    with info_path.open("w", encoding="utf-8") as f:
-        json.dump(proj_info.to_dict(), f, indent=2)
 

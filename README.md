@@ -1,5 +1,10 @@
+### EDITOR NOTES
+I remapped "Github Copilot: Toggle (Enable/Disable) Inline Suggestions" to CMD SHIFT K
+
 # JETS
 Joe's Electrical Takeoff Software
+
+
 
 * Running 
 Need a virtual environment for development. If you don't have a .venv folder, create one with
@@ -16,6 +21,18 @@ Need a virtual environment for development. If you don't have a .venv folder, cr
 * REFERENCE_DB_DIR may be something other than `$HOME/.jets/projects/aaa_default_project/database` if desired. Recall that upon creation of a new project, its database will live INSIDE the project folder, so it may always be able to be referenced!!! The new project's database will be initialized as a COPY of the database found in DEFAULT_DB_DIR.
 
 ```
+FLOW:
+main.py
+
+
+
+
+#TODO: 
+need file for audit trail
+need file for temp items which will be ordered by time?
+thumbnails - simple and annotated
+
+
 $HOME/.jets/
 ├─ .jets_config # REFERENCE_DB_DIR, [RECENT_PROJECT_BROWSER_DIRS], WINDOW_WIDTH, ...
 |
@@ -33,8 +50,8 @@ $HOME/.jets/
 │  │  |
 │  │  ├─ drawings/
 │  │  │  ├─ uuid1/
-│  │  │  │  ├─ drawing.json         # filename, scale, ...
-│  │  │  │  ├─ annotations.json     # all markups and takeoff details
+│  │  │  │  ├─ drawing.json         # filename, scale, all markups and takeoff details, ...
+│  │  │  │  ├─ dwgfile.pdf         
 │  │  │  ├─ uuid2/...
 │  │  │  ├─ uuid3/...
 │  │  |

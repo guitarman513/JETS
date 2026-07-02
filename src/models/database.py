@@ -4,6 +4,8 @@ from enum import StrEnum, Enum
 from typing import List, Union, Literal, Dict
 from pathlib import Path
 
+from models.z_model_hierarchy import InstantlyUpdates
+
 class UOM(StrEnum):
     LENGTH = "LENGTH"
     COUNT = "COUNT"
@@ -57,8 +59,10 @@ class DatabaseAssembly(UILineItem):
     components: list[AssemblyComponent]
 
 
-class Database(BaseModel):
-    #TODO: force usage of serialize_as_any=True
+# Because these items have UI information, create separate instances for item_db, assembly_db, etc.
+class Database(InstantlyUpdates):
+    PROJECT_PATH:Path = str("EDIT_ME_PLEASE")
+    OUTPUT_CONFIG_FILE_NAME:str = 'EDIT_ME_PLEASE'
     ui_dict: Dict[int, UILineItem | DatabaseItem | DatabaseAssembly]
     
     def dbitems(self) -> List[UILineItem | DatabaseItem | DatabaseAssembly]:
@@ -69,9 +73,3 @@ class Database(BaseModel):
         return [item for item in self.ui_dict.values() if item.line_item_type=='CATEGORY']
     def uispacers(self) -> List[UILineItem]:
         return [item for item in self.ui_dict.values() if item.line_item_type=='SPACER']
-
-    def save_to_json_file(self, filepath:Path) -> None:
-        filepath.write_text(self.model_dump_json(
-            serialize_as_any=True,
-            indent=4,
-        ))

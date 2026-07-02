@@ -2,6 +2,8 @@ from uuid import uuid4, UUID
 from pydantic import BaseModel
 from pathlib import Path
 
+from models.z_model_hierarchy import InstantlyUpdates
+
 class TakeoffFilter(BaseModel):
     filter_id: int
     filter_name: str
@@ -28,15 +30,16 @@ class AuditEntry(BaseModel):
     is_taken_off_of_a_dwg: bool
     annotation_id: UUID # only populated if is_taken_off_of_a_dwg
     # now for the filters associated with this entry
-    drawing_id: UUID
-    bid_item:str
-    system:str
+    filter_selection_drawing_id: UUID
+    filter_selection_bid_item:str
+    filter_selection_system:str
     #TODO: These are blank to start. Upon creation of a filter all items in audit trail will be assigned to the first option.
-    custom_filter_1_selection:str
-    custom_filter_2_selection:str
-    custom_filter_3_selection:str
+    filter_selection_custom_1:str
+    filter_selection_custom_2:str
+    filter_selection_custom_3:str
 
-class AuditTrail(BaseModel):
+class AuditTrail(InstantlyUpdates):
+    PARENT_PATH:Path = str("EDIT_ME_PLEASE")
+    OUTPUT_CONFIG_FILE_NAME:str = 'audit_trail.json'
+    takeoff_filters: list[TakeoffFilter] = DEFAULT_FILTERS
     entries: list[AuditEntry] = []
-    def save_to_file(self, file_path: Path):
-        file_path.write_text(self.model_dump_json(indent=4))

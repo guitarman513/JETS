@@ -9,10 +9,12 @@ from PyQt6.QtWidgets import QApplication, QStackedWidget, QMainWindow
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIcon
 
-from ui.home_screen import HomeScreen
-from ui.viewer_window import ViewerWindow
+from ui.aa_project_browser import ProjectBrowser
+from ui.ba_proj_tabular import ProjWindowTabular
+from models.project import ProjectInfo, ProjectManager
 
-from models.jets import load_jets_config_db_dir_and_project_dir
+from models.jets import JetsConfig, initialize_jets_ecosystem_if_dne
+from a_constants import *
 
 
 class AppShell(QMainWindow):
@@ -23,47 +25,40 @@ class AppShell(QMainWindow):
 
     def __init__(self):
         super().__init__()
-
-        # Read the .jets/.jetsconfig file for defaults like defaultdbdir and default projectdir
-        db_dir, project_dir = load_jets_config_db_dir_and_project_dir()
-
+        initialize_jets_ecosystem_if_dne()
+        jets_config = JetsConfig.load(DEFAULT_JETS_CONFIG_FILE)
 
         self.setWindowTitle("JETS — Joe's Electrical Takeoff Software")
-        # self.resize(1200, 800)
-        self.setMinimumSize(900, 600)
+        self.setMinimumSize(jets_config.window_width, jets_config.window_height)
 
-        # Stack: index 0 = home, index 1 = project viewer
+        # Stack: index 0 = projects browser, index 1 = project viewer
         self.stack = QStackedWidget()
         self.setCentralWidget(self.stack)
 
-        # Home screen
-        self.home = HomeScreen()
+        # Projects Browser Screen
+        self.home = ProjectBrowser(jets_config)
         self.home.project_opened.connect(self._open_project)
         self.stack.addWidget(self.home)
 
-        # Viewer placeholder (created on demand)
-        self._viewer = None
+        # Project Viewer placeholder (created on demand)
+        self._project_viewer_tabular = None
 
         # Start on home
         self.stack.setCurrentIndex(0)
 
-    def _open_project(self, project_id: int):
-        # Remove previous viewer if it exists
-        if self._viewer is not None:
-            self.stack.removeWidget(self._viewer)
-            self._viewer.deleteLater()
-            self._viewer = None
+    def _open_project(self, project_info: ProjectInfo):
+        # Remove previous project viewer if it exists
+        if self._project_viewer_tabular is not None:
+            self.stack.removeWidget(self._project_viewer_tabular)
+            self._project_viewer_tabular.deleteLater()
+            self._project_viewer_tabular = None
 
-        self._viewer = ViewerWindow(project_id)
-        self._viewer.home_requested.connect(self._go_home)
-        self.stack.addWidget(self._viewer)
-        self.stack.setCurrentWidget(self._viewer)
+        self._project_viewer_tabular = ProjWindowTabular(project_info)
+        self._project_viewer_tabular.home_requested.connect(self._go_home) # signals are dumb. connect their logic here.
+        self.stack.addWidget(self._project_viewer_tabular)
+        self.stack.setCurrentWidget(self._project_viewer_tabular)
 
-        # Update window title
-        from db.database import get_project #TODO: figure out this. prob read the list of get_all_projects in the database file.
-        p = get_project(project_id)
-        if p:
-            self.setWindowTitle(f"JETS — {p['name']}")
+        self.setWindowTitle(project_info.project_name)
 
     def _go_home(self):
         self.stack.setCurrentWidget(self.home)
@@ -80,7 +75,7 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName("JETS")
     app.setOrganizationName("JETS")
-    app.setStyleSheet(APP_STYLESHEET)
+    # app.setStyleSheet(APP_STYLESHEET)
 
 
     shell = AppShell()

@@ -4,6 +4,43 @@ from typing import List, Tuple, Dict
 from pathlib import Path
 from pydantic import BaseModel, Field
 
+from models.z_model_hierarchy import InstantlyUpdates
+
+
+    
+    # @classmethod
+    # def load_from_file(cls, drawing_folder_path: Path):
+    #     drawing_info_path = drawing_folder_path / "drawing.json"
+    #     if not drawing_info_path.exists():
+    #         raise FileNotFoundError(f"Drawing info file not found at {drawing_info_path}.")
+    #     return cls.model_validate_json(drawing_info_path.read_text())
+
+# def get_all_drawings_in_project(project: ProjectInfo) -> list[Drawing]:
+#     drawing_directory = project.this_project_folder_path / "drawings"
+#     drawings: list[Drawing] = []
+#     if not drawing_directory.exists():
+#         return drawings
+#     for drawing_folder in drawing_directory.iterdir():
+#         if not drawing_folder.is_dir():
+#             continue
+#         try:
+#             UUID(drawing_folder.name)
+#         except ValueError:
+#             continue
+#         drawings.append(
+#             Drawing.load_from_file(drawing_folder)
+#         )
+#     return drawings
+
+
+
+
+
+
+
+
+
+
 
 # #TODO: I don't think I want to support text yet
 # class AnnotationText(BaseModel):
@@ -70,10 +107,6 @@ class Annotation(BaseModel):
     class Config:
         use_enum_values = True
 
-class Annotations(BaseModel):
-    annotations: List[Annotation] = Field(default_factory=list) # type: ignore
-    def save_to_file(self, file_path: Path):
-        file_path.write_text(self.model_dump_json(indent=4))
 
 annotation_style_fire_alarm = AnnotationStyle(
     name="FIRE ALARM", count_color_outer="FF0000", count_color_inner="FF1111", count_size=5, count_shape=AnnotationShape.CIRCLE, count_opacity=0.8,
@@ -86,14 +119,37 @@ annotation_style_branch_circuits = AnnotationStyle(
     highlight_color="EEEEEF", highlight_width=10, highlight_opacity=0.4
 )
 
-class AnnotationStyles(BaseModel):
-    styles: List[AnnotationStyle] = Field(default_factory=list) # type: ignore
+DEFAULT_ANNOTATION_STYLES:List[AnnotationStyle] = [
+        annotation_style_fire_alarm,
+        annotation_style_branch_circuits
+]
+
+class AnnotationStyles(InstantlyUpdates):
+    PARENT_PATH:Path = str("EDIT_ME_PLEASE")
+    OUTPUT_CONFIG_FILE_NAME:str = "annotation_styles.json"
+    annotation_styles: List[AnnotationStyle] = DEFAULT_ANNOTATION_STYLES
 
 #TODO: save this to the defaults folder, and then copy it to the .jets user data directory in an 
 # default_annotation_styles.json file that users may edit.
-default_annotation_styles = AnnotationStyles(
-    styles=[
-        annotation_style_fire_alarm,
-        annotation_style_branch_circuits
-    ]
-)
+
+
+
+'''
+Project Manager should only have to load data for one pdf at a time I guess
+only need to auto-update one dwg at a time
+
+
+'''
+
+class DrawingScale(BaseModel):
+    pass
+
+class Drawing(InstantlyUpdates):
+    PARENT_PATH:Path = str("EDIT_ME_PLEASE") # e.g. C:/Users/.../projects/some_project/drawings/uuid4uuid4-uuid4-uuid4-uuid4uuid4
+    OUTPUT_CONFIG_FILE_NAME:str = "drawings.json" # drawing.json
+    drawing_id: UUID = Field(default_factory=uuid4)
+    dwg_filename: str           # user-friendly filename e.g. "E-101.pdf"
+    thumbnail_plain_filename:str
+    thumbnail_annotated_filename:str
+    annotations: List[Annotation]
+    dwg_scale: DrawingScale
